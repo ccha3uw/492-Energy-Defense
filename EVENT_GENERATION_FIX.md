@@ -1,6 +1,6 @@
 # Event Generation Fix Summary
 
-## Problem Identified
+## Problems Identified
 
 The event generation was NOT running every 30 minutes as expected. Analysis of the logs revealed:
 
@@ -12,6 +12,10 @@ The event generation was NOT running every 30 minutes as expected. Analysis of t
    - Run at 00:31:51 missed by ~18 minutes
 
 3. **Root cause**: When a job takes longer than the interval (30 minutes), APScheduler skips subsequent runs to prevent overlapping executions.
+
+4. **SQLAlchemy thread-safety issue** (discovered during fix): SQLAlchemy sessions are not thread-safe. Using a single session across multiple threads causes errors like:
+   - "This session is provisioning a new connection; concurrent operations are not permitted"
+   - "Method 'commit()' can't be called here; method 'commit()' is already in progress"
 
 ## Changes Made
 
@@ -40,6 +44,11 @@ Implemented parallel processing using `ThreadPoolExecutor` to dispatch events co
 - `dispatch_firewall_events_parallel()` - Dispatch firewall events in parallel  
 - `dispatch_patch_events_parallel()` - Dispatch patch events in parallel
 
+**Thread-safety solution**:
+1. **Eager loading**: Convert SQLAlchemy objects to dictionaries before passing to threads (avoids lazy loading issues)
+2. **Per-thread sessions**: Each worker thread creates its own database session via `_send_event_with_session()`
+3. **Proper cleanup**: Sessions are closed in `finally` blocks to prevent connection leaks
+
 **Configuration**: 
 - Default: 10 concurrent workers
 - Configurable via `DISPATCH_WORKERS` environment variable
@@ -66,12 +75,12 @@ Created `/workspace/test_db_connection.sh` to verify database connectivity and c
 
 ## Testing Instructions
 
-### 1. Rebuild and restart the backend container:
+### 1. Restart the backend container to apply changes:
 
 ```bash
-docker-compose down
-docker-compose build backend
-docker-compose up -d
+docker-compose restart backend
+# OR if using docker compose v2:
+docker compose restart backend
 ```
 
 ### 2. Monitor the logs to see the new timing information:
