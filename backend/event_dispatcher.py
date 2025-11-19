@@ -2,8 +2,9 @@
 import os
 import logging
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, List
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlalchemy.orm import Session
 from .models import LoginEvent, FirewallLog, PatchLevel, EventAnalysis
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 AGENT_URL = os.getenv("AGENT_URL", "http://agent:8000/evaluate-event")
 TIMEOUT = 30  # seconds
+MAX_WORKERS = int(os.getenv("DISPATCH_WORKERS", "10"))  # Concurrent dispatch threads
 
 
 class EventDispatcher:
@@ -110,6 +112,51 @@ class EventDispatcher:
         except Exception as e:
             logger.error(f"Unexpected error dispatching event {event_id}: {e}")
             return {"error": str(e)}
+
+    def dispatch_login_events_parallel(self, events: List[LoginEvent]) -> int:
+        """Dispatch multiple login events in parallel."""
+        successful = 0
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(self.dispatch_login_event, event): event for event in events}
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if "error" not in result:
+                        successful += 1
+                except Exception as e:
+                    event = futures[future]
+                    logger.error(f"Error dispatching login event {event.id}: {e}")
+        return successful
+
+    def dispatch_firewall_events_parallel(self, events: List[FirewallLog]) -> int:
+        """Dispatch multiple firewall events in parallel."""
+        successful = 0
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(self.dispatch_firewall_event, event): event for event in events}
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if "error" not in result:
+                        successful += 1
+                except Exception as e:
+                    event = futures[future]
+                    logger.error(f"Error dispatching firewall event {event.id}: {e}")
+        return successful
+
+    def dispatch_patch_events_parallel(self, events: List[PatchLevel]) -> int:
+        """Dispatch multiple patch events in parallel."""
+        successful = 0
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = {executor.submit(self.dispatch_patch_event, event): event for event in events}
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if "error" not in result:
+                        successful += 1
+                except Exception as e:
+                    event = futures[future]
+                    logger.error(f"Error dispatching patch event {event.id}: {e}")
+        return successful
 
     def dispatch_all_pending(self):
         """Dispatch all events that haven't been analyzed yet."""
