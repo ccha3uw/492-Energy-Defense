@@ -66,9 +66,55 @@
                 const alert = await response.json();
                 container.innerHTML = '';
                 container.appendChild(createCaseDetailView(alert));
+                
+                // Check if this alert has been reviewed and update timeline
+                await checkReviewStatus(alertId);
             } catch (error) {
                 console.error('Error loading case:', error);
                 container.innerHTML = '<div class="error">Error loading case details. Please try again.</div>';
+            }
+        }
+
+        async function checkReviewStatus(alertId) {
+            try {
+                const response = await fetch(`/api/alert/${alertId}/feedback`);
+                if (response.ok) {
+                    const feedback = await response.json();
+                    if (feedback && feedback.length > 0) {
+                        // Get the most recent feedback
+                        const latest = feedback[0];
+                        let statusText = 'Reviewed by Analyst';
+                        
+                        if (latest.action === 'whitelist_ip') {
+                            statusText = 'Reviewed: IP Whitelisted';
+                        } else if (latest.action === 'whitelist_user') {
+                            statusText = 'Reviewed: User Whitelisted';
+                        } else if (latest.action === 'false_positive') {
+                            statusText = 'Reviewed: False Positive';
+                        } else if (latest.action === 'confirmed_threat') {
+                            statusText = 'Reviewed: Threat Confirmed';
+                        }
+                        
+                        updateTimelineStatus(alertId, statusText);
+                        
+                        // Hide action buttons since already reviewed
+                        const actionsDiv = document.querySelector('.feedback-actions');
+                        if (actionsDiv) {
+                            actionsDiv.style.display = 'none';
+                        }
+                        
+                        // Show review info
+                        const resultDiv = document.getElementById(`feedback-result-${alertId}`);
+                        if (resultDiv) {
+                            resultDiv.style.display = 'block';
+                            resultDiv.className = 'feedback-result success';
+                            resultDiv.innerHTML = `✅ Previously reviewed as: ${latest.action.replace('_', ' ')}<br><small>Notes: ${latest.notes || 'None'}</small>`;
+                        }
+                    }
+                }
+            } catch (error) {
+                // No feedback yet, which is fine
+                console.log('No previous feedback found');
             }
         }
 
@@ -211,11 +257,11 @@
                                 <p>${timestamp.toLocaleString()}</p>
                             </div>
                         </div>
-                        <div class="timeline-item">
+                        <div class="timeline-item" id="timeline-status-${alert.id}">
                             <div class="timeline-marker active"></div>
                             <div class="timeline-content">
                                 <strong>Status</strong>
-                                <p>Pending Analyst Review</p>
+                                <p id="timeline-status-text-${alert.id}">Pending Analyst Review</p>
                             </div>
                         </div>
                     </div>
@@ -227,27 +273,29 @@
                         <p class="feedback-intro">Review this alert and provide feedback to improve future analysis:</p>
                         
                         <div class="feedback-actions">
-                            <button class="feedback-btn btn-whitelist-ip" onclick="showWhitelistForm('ip', ${alert.id}, '${alert.event_details.src_ip || ''}')">
+                            <button class="feedback-btn btn-whitelist-ip" onclick="showFeedbackForm('whitelist_ip', ${alert.id}, '${alert.event_details.src_ip || ''}')">
                                 ✓ Whitelist Source IP
                             </button>
-                            <button class="feedback-btn btn-whitelist-user" onclick="showWhitelistForm('user', ${alert.id}, '${alert.event_details.username || ''}')">
+                            <button class="feedback-btn btn-whitelist-user" onclick="showFeedbackForm('whitelist_user', ${alert.id}, '${alert.event_details.username || ''}')">
                                 ✓ Whitelist User
                             </button>
-                            <button class="feedback-btn btn-false-positive" onclick="submitFeedback(${alert.id}, 'false_positive')">
+                            <button class="feedback-btn btn-false-positive" onclick="showFeedbackForm('false_positive', ${alert.id})">
                                 ⚠️ Mark False Positive
                             </button>
-                            <button class="feedback-btn btn-confirmed" onclick="submitFeedback(${alert.id}, 'confirmed_threat')">
+                            <button class="feedback-btn btn-confirmed" onclick="showFeedbackForm('confirmed_threat', ${alert.id})">
                                 🚨 Confirm Threat
                             </button>
                         </div>
 
-                        <div id="whitelist-form-${alert.id}" class="whitelist-form" style="display: none;">
-                            <h3 id="whitelist-title-${alert.id}">Whitelist Details</h3>
-                            <input type="text" id="whitelist-value-${alert.id}" class="whitelist-input" placeholder="Enter value to whitelist">
-                            <textarea id="feedback-notes-${alert.id}" class="feedback-notes" placeholder="Add notes about why this should be whitelisted (e.g., 'New team member', 'Known safe system')..." rows="3"></textarea>
+                        <div id="feedback-form-${alert.id}" class="feedback-form-container" style="display: none;">
+                            <h3 id="feedback-form-title-${alert.id}">Feedback Details</h3>
+                            <div id="feedback-value-container-${alert.id}" style="display: none;">
+                                <input type="text" id="feedback-value-${alert.id}" class="whitelist-input" placeholder="Enter value">
+                            </div>
+                            <textarea id="feedback-form-notes-${alert.id}" class="feedback-notes" placeholder="Add notes about your decision..." rows="3"></textarea>
                             <div class="whitelist-actions">
-                                <button class="btn btn-primary" onclick="submitWhitelist(${alert.id})">Submit Whitelist</button>
-                                <button class="btn btn-secondary" onclick="cancelWhitelist(${alert.id})">Cancel</button>
+                                <button class="btn btn-primary" onclick="submitFeedbackForm(${alert.id})">Submit Feedback</button>
+                                <button class="btn btn-secondary" onclick="cancelFeedbackForm(${alert.id})">Cancel</button>
                             </div>
                         </div>
 
@@ -259,44 +307,87 @@
             return container;
         }
 
-        let currentWhitelistType = null;
+        let currentFeedbackType = null;
 
-        function showWhitelistForm(type, alertId, defaultValue) {
-            currentWhitelistType = type;
-            const form = document.getElementById(`whitelist-form-${alertId}`);
-            const title = document.getElementById(`whitelist-title-${alertId}`);
-            const input = document.getElementById(`whitelist-value-${alertId}`);
+        function showFeedbackForm(type, alertId, defaultValue = '') {
+            currentFeedbackType = type;
+            const form = document.getElementById(`feedback-form-${alertId}`);
+            const title = document.getElementById(`feedback-form-title-${alertId}`);
+            const valueContainer = document.getElementById(`feedback-value-container-${alertId}`);
+            const input = document.getElementById(`feedback-value-${alertId}`);
+            const notesArea = document.getElementById(`feedback-form-notes-${alertId}`);
             
-            if (type === 'ip') {
+            // Configure form based on action type
+            if (type === 'whitelist_ip') {
                 title.textContent = 'Whitelist IP Address';
                 input.placeholder = 'Enter IP address';
                 input.value = defaultValue || '';
-            } else if (type === 'user') {
+                valueContainer.style.display = 'block';
+                notesArea.placeholder = 'Add notes about why this IP should be whitelisted (e.g., "New team member", "Known safe system")...';
+            } else if (type === 'whitelist_user') {
                 title.textContent = 'Whitelist User';
                 input.placeholder = 'Enter username';
                 input.value = defaultValue || '';
+                valueContainer.style.display = 'block';
+                notesArea.placeholder = 'Add notes about why this user should be whitelisted (e.g., "New employee", "Authorized administrator")...';
+            } else if (type === 'false_positive') {
+                title.textContent = 'Mark as False Positive';
+                valueContainer.style.display = 'none';
+                notesArea.placeholder = 'Explain why this is a false positive (e.g., "Legitimate testing", "Known system behavior", "Incorrect threshold")...';
+            } else if (type === 'confirmed_threat') {
+                title.textContent = 'Confirm Threat';
+                valueContainer.style.display = 'none';
+                notesArea.placeholder = 'Add notes about the threat (e.g., "Verified malicious activity", "Action taken: blocked at firewall", "Escalated to security team")...';
             }
             
             form.style.display = 'block';
+            notesArea.focus();
         }
 
-        function cancelWhitelist(alertId) {
-            const form = document.getElementById(`whitelist-form-${alertId}`);
+        function cancelFeedbackForm(alertId) {
+            const form = document.getElementById(`feedback-form-${alertId}`);
+            const notesArea = document.getElementById(`feedback-form-notes-${alertId}`);
             form.style.display = 'none';
-            currentWhitelistType = null;
+            notesArea.value = '';
+            currentFeedbackType = null;
         }
 
-        async function submitWhitelist(alertId) {
-            const value = document.getElementById(`whitelist-value-${alertId}`).value.trim();
-            const notes = document.getElementById(`feedback-notes-${alertId}`).value.trim();
+        async function submitFeedbackForm(alertId) {
+            const notes = document.getElementById(`feedback-form-notes-${alertId}`).value.trim();
+            const valueContainer = document.getElementById(`feedback-value-container-${alertId}`);
+            let value = null;
             
-            if (!value) {
-                alert('Please enter a value to whitelist');
+            // Get value if it's a whitelist action
+            if (valueContainer.style.display !== 'none') {
+                value = document.getElementById(`feedback-value-${alertId}`).value.trim();
+                if (!value) {
+                    alert('Please enter a value to whitelist');
+                    return;
+                }
+            }
+            
+            if (!notes) {
+                alert('Please add notes explaining your decision');
                 return;
             }
             
-            const action = currentWhitelistType === 'ip' ? 'whitelist_ip' : 'whitelist_user';
-            await submitFeedback(alertId, action, notes, value);
+            await submitFeedback(alertId, currentFeedbackType, notes, value);
+        }
+
+        function updateTimelineStatus(alertId, statusText) {
+            const statusElement = document.getElementById(`timeline-status-text-${alertId}`);
+            const markerElement = document.querySelector(`#timeline-status-${alertId} .timeline-marker`);
+            
+            if (statusElement) {
+                statusElement.textContent = statusText;
+                statusElement.style.color = 'var(--low-green)';
+                statusElement.style.fontWeight = '600';
+            }
+            
+            if (markerElement) {
+                markerElement.classList.remove('active');
+                markerElement.style.background = 'var(--low-green)';
+            }
         }
 
         async function submitFeedback(alertId, action, notes = '', whitelistValue = null) {
@@ -328,27 +419,35 @@
                 if (response.ok) {
                     resultDiv.className = 'feedback-result success';
                     let message = '✅ Feedback submitted successfully!';
+                    let statusText = 'Reviewed by Analyst';
                     
                     if (action === 'whitelist_ip') {
                         message = `✅ IP address "${whitelistValue}" has been whitelisted. Future events from this IP will be flagged accordingly.`;
+                        statusText = 'Reviewed: IP Whitelisted';
                     } else if (action === 'whitelist_user') {
                         message = `✅ User "${whitelistValue}" has been whitelisted. Future events from this user will be flagged accordingly.`;
+                        statusText = 'Reviewed: User Whitelisted';
                     } else if (action === 'false_positive') {
                         message = '✅ Alert marked as false positive. This will help improve future analysis.';
+                        statusText = 'Reviewed: False Positive';
                     } else if (action === 'confirmed_threat') {
                         message = '✅ Threat confirmed. Event logged for security tracking.';
+                        statusText = 'Reviewed: Threat Confirmed';
                     }
                     
                     resultDiv.innerHTML = message;
                     
                     // Hide form if it was shown
-                    const form = document.getElementById(`whitelist-form-${alertId}`);
+                    const form = document.getElementById(`feedback-form-${alertId}`);
                     if (form) {
                         form.style.display = 'none';
                     }
                     
                     // Hide feedback buttons
                     document.querySelector('.feedback-actions').style.display = 'none';
+                    
+                    // Update timeline status
+                    updateTimelineStatus(alertId, statusText);
                 } else {
                     throw new Error(result.detail || 'Failed to submit feedback');
                 }

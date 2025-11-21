@@ -219,6 +219,33 @@ async def get_alerts(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/alert/{alert_id}/feedback")
+async def get_alert_feedback(alert_id: int):
+    """Get feedback history for a specific alert."""
+    db = next(get_db())
+    
+    try:
+        feedback = db.query(AnalystFeedbackModel).filter(
+            AnalystFeedbackModel.alert_id == alert_id
+        ).order_by(desc(AnalystFeedbackModel.reviewed_at)).all()
+        
+        results = []
+        for f in feedback:
+            results.append({
+                "id": f.id,
+                "action": f.action,
+                "notes": f.notes,
+                "whitelist_value": f.whitelist_value,
+                "reviewed_by": f.reviewed_by,
+                "reviewed_at": f.reviewed_at.isoformat()
+            })
+        
+        return results
+    except Exception as e:
+        logger.error(f"Error fetching feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/alert/{alert_id}")
 async def get_alert_details(alert_id: int):
     """Get detailed information about a specific alert."""

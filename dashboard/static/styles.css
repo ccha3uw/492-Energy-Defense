@@ -747,6 +747,31 @@ body {
     border-color: var(--critical-red);
 }
 
+.feedback-form-container {
+    background: var(--secondary-bg);
+    border: 2px solid var(--accent-blue);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.feedback-form-container h3 {
+    margin-bottom: 1rem;
+    color: var(--accent-blue);
+}
+
 .whitelist-form {
     background: var(--secondary-bg);
     border: 2px solid var(--accent-blue);
