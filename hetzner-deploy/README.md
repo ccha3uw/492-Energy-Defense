@@ -1,341 +1,231 @@
-# 🚀 Hetzner Deployment Package - 492 Energy Defense
+# Easy Hetzner Deployment Package
 
-## Quick Deploy (5 Minutes)
+## 🚀 One-Command Deployment
+
+This package allows you to deploy the 492-Energy-Defense system to a Hetzner server with a single command.
+
+## Prerequisites
+
+1. **Hetzner Cloud Account**: https://console.hetzner.cloud/
+2. **SSH Key**: Your public SSH key added to Hetzner
+3. **Local Machine**: Linux/macOS with SSH, rsync, and curl
+
+## Quick Start (5 Minutes)
 
 ### Step 1: Create Hetzner Server
 
 1. Go to https://console.hetzner.cloud/
-2. Create a new server:
+2. Create new project: `cyber-defense`
+3. Add server:
    - **Image**: Ubuntu 22.04 LTS
-   - **Type**: CPX21 (3 vCPU, 8GB RAM) - €15/month
+   - **Type**: CPX21 (3 vCPU, 4GB RAM) - €9/month (Rule-based)
+   - **Type**: CPX31 (4 vCPU, 8GB RAM) - €16/month (For LLM mode)
    - **Location**: Closest to you
-   - **SSH Key**: Add your public key
-   - **Name**: cyber-defense-agent
-3. Copy the server IP address
+   - **SSH Key**: Add your key
+   - **Name**: cyber-defense-server
+4. **Copy the IP address**: e.g., `65.21.123.45`
 
-### Step 2: Deploy from Your Local Machine
+### Step 2: Deploy
+
+From your local machine (in the project root):
 
 ```bash
-# Clone or download this repository
 cd hetzner-deploy
-
-# Make deployment script executable
-chmod +x deploy-to-hetzner.sh
-
-# Run deployment (replace with your server IP)
-./deploy-to-hetzner.sh YOUR_SERVER_IP
+./deploy.sh 65.21.123.45
 ```
 
 That's it! The script will:
-- ✅ Configure the server
-- ✅ Install Docker
-- ✅ Upload all files
-- ✅ Start services
-- ✅ Download the AI model
+- ✅ Setup the server (install Docker, configure firewall)
+- ✅ Deploy the application
+- ✅ Start all services
 - ✅ Run health checks
 
-### Step 3: Verify
+### Step 3: Access
 
-```bash
-# Check status
-ssh root@YOUR_SERVER_IP '/opt/cyber-defense/status.sh'
+After deployment completes:
 
-# View dashboard (if configured)
-# Open: http://YOUR_SERVER_IP:3000
+- **Dashboard**: http://65.21.123.45:3000
+- **Agent API**: http://65.21.123.45:8000
+- **SSH Access**: `ssh root@65.21.123.45`
 
-# Test the API
-curl http://YOUR_SERVER_IP:8000/health
-```
+## Server Size Guide
 
----
+| Server Type | vCPU | RAM | Disk | Cost/Month | Use Case |
+|-------------|------|-----|------|------------|----------|
+| CX11 | 1 | 2GB | 20GB | €4 | Testing only |
+| CPX21 | 3 | 4GB | 80GB | €9 | Rule-based (Recommended) |
+| CPX31 | 4 | 8GB | 160GB | €16 | LLM mode with Qwen 1.5B |
+| CPX41 | 8 | 16GB | 240GB | €32 | LLM mode with Qwen 3B |
+
+**Recommendation**: Start with CPX21 using rule-based mode (100% accurate, faster)
 
 ## What Gets Deployed
 
-### Services
-- 🤖 **AI Agent** (Port 8000) - Analyzes security events
-- 🗄️ **PostgreSQL** (Port 5432) - Stores events and analysis
-- 🧠 **Ollama** (Port 11434) - Qwen AI model
-- 📊 **Dashboard** (Port 3000) - Web interface (optional)
-- ⚙️ **Backend** - Generates events every 30 minutes
+- ✅ Docker & Docker Compose
+- ✅ All application services (database, agent, backend, dashboard)
+- ✅ Firewall configuration (ports 22, 3000, 8000, 8080)
+- ✅ Log rotation
+- ✅ Auto-restart policies
+- ✅ Health monitoring
+- ✅ Backup scripts (optional)
 
-### Configuration
-- **Default Mode**: Rule-based (100% accurate, no LLM overhead)
-- **Model**: Qwen 2.5 1.5B (if you enable LLM mode)
-- **Memory**: 6-8GB RAM used
-- **Storage**: ~5GB used
+## Advanced Options
 
----
+### Deploy with Custom Configuration
 
-## Server Requirements
-
-### Minimum (Rule-Based Mode)
-- **CPU**: 2 vCPUs
-- **RAM**: 4 GB
-- **Storage**: 20 GB
-- **Cost**: ~€5-10/month
-- **Hetzner Type**: CX21
-
-### Recommended (LLM Mode)
-- **CPU**: 3-4 vCPUs
-- **RAM**: 8 GB
-- **Storage**: 40 GB
-- **Cost**: ~€15/month
-- **Hetzner Type**: CPX21 or CPX31
-
-### High Performance
-- **CPU**: 4-8 vCPUs
-- **RAM**: 16 GB
-- **Storage**: 80 GB
-- **Cost**: ~€30/month
-- **Hetzner Type**: CPX31 or CPX41
-
----
-
-## Deployment Options
-
-### Option 1: Full Automated (Recommended)
 ```bash
-./deploy-to-hetzner.sh YOUR_IP
-```
-Deploys everything automatically.
+# Deploy with specific model
+./deploy.sh 65.21.123.45 --model qwen2.5:1.5b
 
-### Option 2: Step-by-Step
-```bash
-# 1. Setup server
-./setup-server.sh YOUR_IP
+# Deploy with rule-based mode (recommended)
+./deploy.sh 65.21.123.45 --rule-based
 
-# 2. Deploy application
-./deploy-app.sh YOUR_IP
+# Deploy with custom SSH user
+./deploy.sh 65.21.123.45 --user myuser
 
-# 3. Configure services
-./configure-services.sh YOUR_IP
+# Deploy with SSL/domain
+./deploy.sh 65.21.123.45 --domain cyberdefense.example.com
 ```
 
-### Option 3: Manual
-See `MANUAL_DEPLOYMENT.md`
+### Setup SSL/HTTPS (Optional)
 
----
-
-## Post-Deployment
-
-### Check Status
 ```bash
-ssh root@YOUR_IP '/opt/cyber-defense/status.sh'
+# After initial deployment
+ssh root@65.21.123.45
+cd /opt/cyber-defense/hetzner-deploy
+./setup-ssl.sh cyberdefense.example.com your@email.com
 ```
 
-### View Logs
+### Enable Monitoring (Optional)
+
 ```bash
-ssh root@YOUR_IP 'cd /opt/cyber-defense && docker-compose logs -f'
+ssh root@65.21.123.45
+cd /opt/cyber-defense/hetzner-deploy
+./setup-monitoring.sh
 ```
 
-### Test the Agent
-```bash
-curl -X POST http://YOUR_IP:8000/evaluate-event \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "login",
-    "data": {
-      "username": "admin",
-      "status": "FAIL",
-      "is_admin": true
-    }
-  }'
-```
+## Management Commands
 
-### Enable Dashboard
+On the server:
+
 ```bash
-ssh root@YOUR_IP
+# Status check
 cd /opt/cyber-defense
-docker-compose up -d dashboard
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Restart services
+docker-compose restart
+
+# Stop services
+docker-compose down
+
+# Start services
+docker-compose up -d
+
+# Backup database
+./hetzner-deploy/backup.sh
+
+# View system health
+./hetzner-deploy/health-check.sh
 ```
-
-Then visit: http://YOUR_IP:3000
-
----
-
-## Configuration
-
-### Switch to LLM Mode
-```bash
-ssh root@YOUR_IP
-cd /opt/cyber-defense
-nano docker-compose.yml
-# Change: USE_LLM=true
-docker-compose restart agent
-```
-
-### Change Model
-```bash
-# Edit docker-compose.yml
-OLLAMA_MODEL=qwen2.5:3b  # or qwen2.5:1.5b
-
-# Pull new model
-docker exec ollama-qwen ollama pull qwen2.5:3b
-docker-compose restart agent
-```
-
-### Scale Resources
-Edit `docker-compose.yml` memory limits:
-```yaml
-deploy:
-  resources:
-    limits:
-      memory: 8G  # Adjust as needed
-```
-
----
-
-## Firewall Configuration
-
-The deployment automatically configures UFW firewall:
-- ✅ Port 22 (SSH)
-- ✅ Port 8000 (Agent API)
-- ✅ Port 3000 (Dashboard - optional)
-- ❌ Port 5432 (Database - internal only)
-- ❌ Port 11434 (Ollama - internal only)
-
----
-
-## Backup & Restore
-
-### Backup Database
-```bash
-ssh root@YOUR_IP '/opt/cyber-defense/backup.sh'
-```
-
-Downloads to: `/opt/cyber-defense/backups/`
-
-### Restore Database
-```bash
-ssh root@YOUR_IP '/opt/cyber-defense/restore.sh backup_file.sql'
-```
-
----
 
 ## Troubleshooting
 
-### Services Not Starting
+### Deployment Failed
+
 ```bash
-ssh root@YOUR_IP
+# Check logs
+./deploy.sh 65.21.123.45 --verbose
+
+# Or manually SSH and check
+ssh root@65.21.123.45
 cd /opt/cyber-defense
-docker-compose ps
 docker-compose logs
 ```
 
-### Out of Memory
-```bash
-# Check memory usage
-ssh root@YOUR_IP 'free -h'
+### Services Not Starting
 
-# Upgrade server or disable LLM mode
+```bash
+ssh root@65.21.123.45
+docker ps  # Check running containers
+docker-compose ps  # Check all services
+docker logs cyber-agent  # Check specific service
 ```
 
 ### Can't Connect
+
 ```bash
 # Check firewall
-ssh root@YOUR_IP 'ufw status'
+ssh root@65.21.123.45
+ufw status
 
-# Allow ports if needed
-ssh root@YOUR_IP 'ufw allow 8000/tcp'
+# Make sure ports are open
+ufw allow 3000/tcp
+ufw allow 8000/tcp
 ```
 
-### Model Download Stuck
-```bash
-ssh root@YOUR_IP
-docker exec ollama-qwen ollama pull qwen2.5:1.5b --debug
+## Files in This Package
+
 ```
-
----
-
-## Updating
-
-### Update Application
-```bash
-./deploy-to-hetzner.sh YOUR_IP
-# Choose "Update" when prompted
+hetzner-deploy/
+├── README.md                 # This file
+├── deploy.sh                 # Main deployment script
+├── server-setup.sh          # Server preparation script
+├── docker-compose.prod.yml  # Production docker-compose
+├── .env.production          # Production environment
+├── setup-ssl.sh             # SSL/HTTPS setup
+├── setup-monitoring.sh      # Monitoring setup
+├── backup.sh                # Database backup script
+├── health-check.sh          # Health monitoring
+├── nginx/                   # Nginx configs (optional)
+│   ├── default.conf
+│   └── ssl.conf
+└── systemd/                 # Systemd services (optional)
+    └── cyber-defense.service
 ```
-
-### Update Docker Images
-```bash
-ssh root@YOUR_IP
-cd /opt/cyber-defense
-docker-compose pull
-docker-compose up -d
-```
-
----
-
-## Uninstall
-
-```bash
-ssh root@YOUR_IP
-cd /opt/cyber-defense
-docker-compose down -v
-rm -rf /opt/cyber-defense
-```
-
----
-
-## Cost Estimation
-
-### Monthly Costs (Hetzner)
-
-| Configuration | Server Type | RAM | Cost/Month |
-|---------------|-------------|-----|------------|
-| Minimal | CX21 | 4GB | €5.83 |
-| Recommended | CPX21 | 8GB | €14.30 |
-| High Performance | CPX31 | 16GB | €29.50 |
-| Maximum | CPX41 | 32GB | €59.00 |
-
-Plus:
-- Backup space: ~€0.50/month
-- Traffic: Free (20TB included)
-
----
 
 ## Security Notes
 
-### Default Settings
-- ✅ UFW firewall enabled
-- ✅ Only necessary ports open
-- ✅ Database not exposed externally
-- ✅ Docker network isolation
-- ⚠️ Default database password (change in production)
+- Default passwords are used (postgres/postgres)
+- Firewall is configured but basic
+- No SSL by default (use setup-ssl.sh)
+- Consider changing database password in production
+- Regular backups recommended
 
-### Production Recommendations
-1. Change database password in `docker-compose.yml`
-2. Add SSL/TLS with nginx reverse proxy
-3. Enable SSH key-only authentication
-4. Set up automated backups
-5. Configure log rotation
-6. Enable fail2ban for SSH protection
+## Updating the Deployment
 
----
+To update an existing deployment:
+
+```bash
+./deploy.sh 65.21.123.45 --update
+```
+
+## Uninstalling
+
+To remove everything:
+
+```bash
+ssh root@65.21.123.45
+cd /opt/cyber-defense
+docker-compose down -v
+cd /
+rm -rf /opt/cyber-defense
+```
 
 ## Support
 
-### Get Help
-- Check logs: `docker-compose logs`
-- Run status check: `./status.sh`
-- Review `TROUBLESHOOTING.md`
-
-### Common Issues
-- **Model too large**: Switch to rule-based mode or smaller model
-- **Out of memory**: Upgrade server or reduce Docker memory limits
-- **Slow performance**: Check CPU usage, consider upgrade
+For issues:
+1. Check logs: `docker-compose logs`
+2. Check system: `./hetzner-deploy/health-check.sh`
+3. Review main README.md in project root
 
 ---
 
-## Next Steps
+**Ready to deploy?**
 
-After deployment:
-1. ✅ Verify all services are running
-2. ✅ Test the API with sample events
-3. ✅ Review the logs
-4. ✅ Configure backups
-5. ✅ Set up monitoring (optional)
-6. ✅ Enable dashboard (optional)
-
----
-
-**Questions? Check the full documentation or run `./status.sh` on the server.**
+```bash
+./deploy.sh YOUR_SERVER_IP
+```
