@@ -1,106 +1,126 @@
-# 🚀 Quick Deploy to Hetzner (5 Minutes)
+# Quick Deploy to Hetzner - 3 Simple Steps
 
-Ultra-fast deployment guide using tar.gz file transfer.
+Perfect for root + password authentication.
 
-## Local Machine (1 minute)
+---
+
+## Step 1: Create Package (Local Machine)
 
 ```bash
-# Create deployment package
 ./create-deployment-package.sh
-
-# Upload to server (replace YOUR_SERVER_IP)
-scp cyber-defense-*.tar.gz root@YOUR_SERVER_IP:/root/
 ```
 
-Enter root password when prompted.
+Creates: `cyber-defense-20251202-XXXXXX.tar.gz`
 
 ---
 
-## On Hetzner Server (4 minutes)
+## Step 2: Create Hetzner Server
 
-```bash
-# SSH into server
-ssh root@YOUR_SERVER_IP
-
-# Extract and setup
-cd /root
-tar -xzf cyber-defense-*.tar.gz
-cd 492-energy-defense
-bash setup-hetzner.sh
-```
-
-Wait for setup to complete (installs Docker, configures firewall, starts services).
+1. Go to: https://console.hetzner.cloud/
+2. Create server:
+   - **Image**: Ubuntu 22.04
+   - **Type**: CPX21 or CPX31
+   - **Location**: Any
+3. Save **root password** and **IP address**
 
 ---
 
-## Done! 🎉
+## Step 3: Deploy
 
-Access your services:
+### Automatic (Recommended)
 
 ```bash
-# Get your server IP
-curl ifconfig.me
-
-# Then visit:
-# Dashboard:  http://YOUR_IP:3000
-# Agent API:  http://YOUR_IP:8000
-# API Docs:   http://YOUR_IP:8000/docs
+./DEPLOY_HETZNER_SIMPLE.sh
 ```
 
----
+Enter IP and password when prompted. That's it!
 
-## Quick Test
+### Manual (If you prefer)
 
 ```bash
-# On server
-curl http://localhost:8000/health | jq
-docker-compose ps
-./test-llm-mode.sh
+# Upload package
+scp cyber-defense-*.tar.gz root@YOUR_IP:/root/
+
+# SSH to server
+ssh root@YOUR_IP
+
+# Deploy
+apt update && apt install -y docker.io docker-compose curl jq
+cd /root && tar -xzf cyber-defense-*.tar.gz
+docker-compose up -d
 ```
 
 ---
 
-## Common Commands
+## Access
+
+After deployment (wait 2 minutes):
+
+- **Dashboard**: http://YOUR_IP:3000
+- **Agent API**: http://YOUR_IP:8000
+- **Health**: http://YOUR_IP:8000/health
+
+---
+
+## Test
 
 ```bash
-# View logs
+curl http://YOUR_IP:8000/health
+```
+
+Should return:
+```json
+{
+  "status": "healthy",
+  "service": "492-Energy-Defense Cyber Event Triage Agent"
+}
+```
+
+---
+
+## Management
+
+### View Logs
+```bash
+ssh root@YOUR_IP
 docker-compose logs -f
+```
 
-# Restart
+### Restart
+```bash
+ssh root@YOUR_IP
 docker-compose restart
+```
 
-# Stop
+### Stop
+```bash
+ssh root@YOUR_IP
 docker-compose down
-
-# Start
-docker-compose up -d
 ```
 
 ---
 
-## Troubleshooting
+## Files Created
 
-**Can't connect from outside?**
-```bash
-ufw allow 3000/tcp
-ufw allow 8000/tcp
-```
-
-**Services not starting?**
-```bash
-docker-compose logs
-systemctl status docker
-```
-
-**Need to update?**
-```bash
-# Upload new package, then:
-cd /root/492-energy-defense
-docker-compose down
-tar -xzf ../cyber-defense-NEW.tar.gz -C /root --overwrite
-docker-compose up -d
-```
+- ✅ `create-deployment-package.sh` - Creates tar.gz
+- ✅ `DEPLOY_HETZNER_SIMPLE.sh` - Automated deployment
+- ✅ `HETZNER_SIMPLE_DEPLOY.md` - Detailed guide
+- ✅ `QUICK_DEPLOY_HETZNER.md` - This file
 
 ---
 
-Full guide: See `HETZNER_TARBALL_DEPLOYMENT.md`
+## Cost
+
+- **CPX21** (4GB RAM): ~€10/month - minimum
+- **CPX31** (8GB RAM): ~€20/month - recommended
+
+---
+
+## That's It!
+
+Three commands to deploy:
+1. `./create-deployment-package.sh`
+2. Create server on Hetzner
+3. `./DEPLOY_HETZNER_SIMPLE.sh`
+
+Done! 🚀
