@@ -1,0 +1,17 @@
+# Files to exclude from deployment
+.git/
+.gitignore
+node_modules/
+*.pyc
+__pycache__/
+.env
+*.log
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+*.md~
+temp/
+tmp/
+test-data/

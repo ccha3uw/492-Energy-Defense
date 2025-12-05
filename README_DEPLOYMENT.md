@@ -1,276 +1,328 @@
-# Deployment Package
+# Deployment Package Overview
 
-This package contains everything needed to deploy the 492-Energy-Defense Cybersecurity Agent to a Hetzner cloud server.
+This repository includes everything needed for **one-command deployment** to Hetzner Cloud.
 
 ## 📦 What's Included
 
-```
-deploy-to-hetzner.sh         # One-command deployment script
-DEPLOYMENT_GUIDE.md          # Complete deployment guide
-QUICKSTART_DEPLOYMENT.md     # 5-minute quick start
-check-qwen-model.sh          # Model verification script
-docker-compose.yml           # Production configuration
-.env.example                 # Environment template
-```
+### Deployment Scripts
+- **`deploy-to-hetzner.sh`** - Main deployment script (one command!)
+- **`health-check.sh`** - Verify deployment status
+- **`apply-fix.sh`** - Fix Qwen model scoring issues
 
-## 🚀 Quick Deploy
+### Documentation
+- **`DEPLOYMENT_QUICKSTART.md`** - 5-minute deployment guide
+- **`HETZNER_DEPLOYMENT.md`** - Complete deployment documentation
+- **`FIX_QWEN_SCORING_ISSUE.md`** - Fix LLM scoring problems
 
-**Prerequisites:**
-- Hetzner Cloud account
-- SSH key configured
-- Server with Ubuntu 22.04 LTS (CPX21 or better recommended)
+### Configuration
+- **`docker-compose.yml`** - Service orchestration
+- **`deploy-config.env.example`** - Deployment settings template
+- **`.deployignore`** - Files excluded from deployment
 
-**Deploy in one command:**
+### Application
+- **`agent/`** - AI agent service
+- **`backend/`** - Event generator & database
+- **`dashboard/`** - Web interface
+
+---
+
+## 🚀 Quick Start
+
+### Deploy to Hetzner (5 minutes)
+
 ```bash
-chmod +x deploy-to-hetzner.sh
+# 1. Create Hetzner server (Ubuntu 22.04, 8GB RAM)
+# 2. Note the IP address
+
+# 3. Deploy
 ./deploy-to-hetzner.sh YOUR_SERVER_IP
+
+# 4. Access
+open http://YOUR_SERVER_IP:3000
 ```
 
-Replace `YOUR_SERVER_IP` with your Hetzner server's IP address.
+**That's it!** ✨
 
-## 📋 What the Deployment Does
+---
 
-The script automatically:
+## 📖 Documentation Guide
 
-1. ✅ Tests SSH connection
-2. ✅ Creates deployment package
-3. ✅ Uploads to server
-4. ✅ Installs Docker & Docker Compose
-5. ✅ Configures firewall (ports 22, 3000, 8000)
-6. ✅ Extracts and sets up application
-7. ✅ Starts all services
-8. ✅ Verifies deployment
+### For Quick Deployment
+→ Read **`DEPLOYMENT_QUICKSTART.md`** (5 minutes)
 
-**Time**: ~5 minutes
-**First run**: Additional 1-2 minutes to download Qwen model
+### For Complete Details
+→ Read **`HETZNER_DEPLOYMENT.md`** (full guide)
 
-## 🌐 Access Your Services
+### For Application Usage
+→ Read **`README.md`** (main docs)
 
-After deployment:
+### For Model Issues
+→ Read **`FIX_QWEN_SCORING_ISSUE.md`**
 
-- **Dashboard**: `http://YOUR_SERVER_IP:3000`
-- **Agent API**: `http://YOUR_SERVER_IP:8000`
-- **API Docs**: `http://YOUR_SERVER_IP:8000/docs`
+---
 
-## 🔧 Server Requirements
+## 🎯 Deployment Features
 
-| Purpose | Type | vCPU | RAM | Storage | Cost/Month |
-|---------|------|------|-----|---------|------------|
-| Testing | CX21 | 2 | 4GB | 40GB | ~€5 |
-| Production | CPX21 | 3 | 8GB | 80GB | ~€15 |
-| Optimal | CPX31 | 4 | 16GB | 160GB | ~€30 |
+### ✅ Fully Automated
+- Installs Docker & Docker Compose
+- Configures firewall
+- Uploads application
+- Starts all services
+- Downloads AI model
 
-**Minimum**: 4GB RAM
+### ✅ Zero Configuration
+- Works out of the box
+- Sensible defaults
+- No manual setup needed
 
-## 📖 Documentation
+### ✅ Production Ready
+- Health checks
+- Automatic restarts
+- Log management
+- Resource limits
 
-- **[QUICKSTART_DEPLOYMENT.md](QUICKSTART_DEPLOYMENT.md)** - 5-minute quick start
-- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete guide with troubleshooting
-- **[README.md](README.md)** - Application documentation
+### ✅ Secure
+- Firewall configured
+- Service isolation
+- Volume persistence
 
-## ✅ Verification
+---
 
-After deployment, verify everything is working:
+## 💰 Server Requirements
 
-```bash
-# Check services
-ssh root@YOUR_SERVER_IP 'cd /opt/cyber-defense && docker-compose ps'
+### Minimum (Rule-Based Mode)
+- **Type**: CX21
+- **RAM**: 4GB
+- **CPU**: 2 vCPU
+- **Cost**: ~€6/month
 
-# Test API
-curl http://YOUR_SERVER_IP:8000/health | jq
+### Recommended (LLM Mode)
+- **Type**: CX31
+- **RAM**: 8GB
+- **CPU**: 2 vCPU
+- **Cost**: ~€13/month
 
-# Test Dashboard
-curl http://YOUR_SERVER_IP:3000/health | jq
+### High Performance
+- **Type**: CPX31
+- **RAM**: 16GB
+- **CPU**: 4 vCPU
+- **Cost**: ~€20/month
 
-# Check Qwen model
-ssh root@YOUR_SERVER_IP 'cd /opt/cyber-defense && ./check-qwen-model.sh'
-```
+---
 
-## 🔄 Managing Your Deployment
+## 🔧 Management
 
 ### View Logs
 ```bash
-ssh root@YOUR_SERVER_IP
+ssh root@YOUR_IP
 cd /opt/cyber-defense
 docker-compose logs -f
 ```
 
 ### Restart Services
 ```bash
-ssh root@YOUR_SERVER_IP
+ssh root@YOUR_IP
 cd /opt/cyber-defense
 docker-compose restart
 ```
 
+### Check Health
+```bash
+./health-check.sh YOUR_IP
+```
+
 ### Update Application
 ```bash
-# From your local machine
-./deploy-to-hetzner.sh YOUR_SERVER_IP
-```
-
-### Stop Services
-```bash
-ssh root@YOUR_SERVER_IP
+ssh root@YOUR_IP
 cd /opt/cyber-defense
+git pull  # or upload new files
 docker-compose down
-```
-
-### Start Services
-```bash
-ssh root@YOUR_SERVER_IP
-cd /opt/cyber-defense
+docker-compose build
 docker-compose up -d
 ```
 
-## 🛡️ Security
+---
 
-The deployment automatically:
-- ✅ Enables UFW firewall
-- ✅ Opens only necessary ports (22, 3000, 8000)
-- ✅ Uses isolated Docker network
-- ✅ Stores data in Docker volumes
+## 🛠️ Customization
 
-**Recommended**: Change default passwords in `.env` file
-
-## 🐛 Troubleshooting
-
-### Services Not Starting
+### Change to Rule-Based Mode
 ```bash
-ssh root@YOUR_SERVER_IP
-cd /opt/cyber-defense
-docker-compose logs
-```
+# Edit docker-compose.yml on server
+USE_LLM=false
 
-### Model Not Loading
-```bash
-ssh root@YOUR_SERVER_IP
-docker exec ollama-qwen ollama pull qwen2.5:0.5b
-```
-
-### Out of Memory
-Edit `docker-compose.yml` and set `USE_LLM=false` for rule-based mode:
-```bash
-ssh root@YOUR_SERVER_IP
-cd /opt/cyber-defense
-nano docker-compose.yml
-# Change: USE_LLM=false
+# Restart
 docker-compose restart agent
 ```
 
-### Cannot Access Dashboard
+### Change AI Model
 ```bash
-ssh root@YOUR_SERVER_IP
-ufw allow 3000/tcp
-ufw allow 8000/tcp
-ufw reload
+# Edit docker-compose.yml on server
+OLLAMA_MODEL=qwen2.5:1.5b
+
+# Pull and restart
+docker exec ollama-qwen ollama pull qwen2.5:1.5b
+docker-compose restart agent
 ```
 
-## 📊 Performance Optimization
-
-**For Small Servers (4GB RAM):**
-- Use rule-based mode (set `USE_LLM=false`)
-- Reduces memory usage by ~4GB
-- Provides 100% accurate scoring
-
-**For Better AI Performance:**
-- Upgrade to CPX31 (16GB RAM)
-- Or use Qwen 1.5B or 3B model
-
-## 💰 Cost Optimization
-
-- **CX21** (~€5/month): Testing and development
-- **CPX21** (~€15/month): Production (recommended)
-- **Snapshots**: Create snapshot when not in use, destroy server, restore later
-
-## 🔐 Backup
-
-Set up automatic database backups:
+### Change Ports
 ```bash
-ssh root@YOUR_SERVER_IP
-cd /opt/cyber-defense
-
-# Create backup script (included in deployment)
-cat > backup.sh << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/backups"
-mkdir -p $BACKUP_DIR
-DATE=$(date +%Y%m%d_%H%M%S)
-docker exec cyber-events-db pg_dump -U postgres cyber_events | gzip > $BACKUP_DIR/db_backup_$DATE.sql.gz
-find $BACKUP_DIR -name "db_backup_*.sql.gz" -mtime +7 -delete
-EOF
-
-chmod +x backup.sh
-
-# Schedule daily backups
-(crontab -l 2>/dev/null; echo "0 2 * * * /opt/cyber-defense/backup.sh") | crontab -
+# Edit docker-compose.yml on server
+ports:
+  - "8080:3000"  # Dashboard on port 8080
+  - "9000:8000"  # API on port 9000
 ```
-
-## 🗑️ Uninstall
-
-To remove everything:
-```bash
-ssh root@YOUR_SERVER_IP
-cd /opt/cyber-defense
-docker-compose down -v
-cd /
-rm -rf /opt/cyber-defense
-```
-
-Or simply destroy the Hetzner server from the console.
-
-## 📞 Support
-
-**Quick Commands:**
-```bash
-# Status check
-ssh root@YOUR_SERVER_IP 'cd /opt/cyber-defense && docker-compose ps'
-
-# View recent logs
-ssh root@YOUR_SERVER_IP 'cd /opt/cyber-defense && docker-compose logs --tail=100'
-
-# Restart everything
-ssh root@YOUR_SERVER_IP 'cd /opt/cyber-defense && docker-compose restart'
-```
-
-**For detailed help**: See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
-
-## 📝 Example Deployment
-
-```bash
-# 1. Create Hetzner server (Ubuntu 22.04, CPX21)
-# 2. Note the IP: 65.21.123.45
-
-# 3. Deploy
-./deploy-to-hetzner.sh 65.21.123.45
-
-# 4. Wait for completion (5 minutes)
-
-# 5. Access dashboard
-open http://65.21.123.45:3000
-
-# 6. Verify
-curl http://65.21.123.45:8000/health | jq
-```
-
-## ✨ Features
-
-- ✅ **One-command deployment**
-- ✅ **Automatic dependency installation**
-- ✅ **Firewall configuration**
-- ✅ **Health checks**
-- ✅ **Rollback support**
-- ✅ **Production-ready**
 
 ---
 
-**Ready to deploy?**
+## 📊 What Gets Deployed
 
+After deployment, you'll have:
+
+- **📊 Dashboard** - Web interface at `:3000`
+- **🤖 Agent API** - REST API at `:8000`
+- **🐘 PostgreSQL** - Database at `:5432`
+- **🧠 Ollama** - AI model server (internal)
+- **🔄 Backend** - Event generator (internal)
+
+All running in Docker containers with automatic restarts.
+
+---
+
+## 🔐 Security Checklist
+
+After deployment:
+
+- [ ] Change database password in `docker-compose.yml`
+- [ ] Restrict firewall to your IP
+- [ ] Setup domain with SSL (optional)
+- [ ] Configure backups
+- [ ] Review logs regularly
+
+See **`HETZNER_DEPLOYMENT.md`** for details.
+
+---
+
+## 🐛 Troubleshooting
+
+### Deployment fails?
+```bash
+# Check SSH connection
+ssh root@YOUR_IP
+
+# Check logs
+./deploy-to-hetzner.sh YOUR_IP 2>&1 | tee deploy.log
+```
+
+### Services not starting?
+```bash
+ssh root@YOUR_IP
+cd /opt/cyber-defense
+docker-compose logs
+docker-compose ps
+```
+
+### Can't access services?
+```bash
+# Check firewall
+ssh root@YOUR_IP
+ufw status
+
+# Allow ports
+ufw allow 3000/tcp
+ufw allow 8000/tcp
+```
+
+### Model scoring incorrect?
+```bash
+# See FIX_QWEN_SCORING_ISSUE.md
+./apply-fix.sh
+```
+
+---
+
+## 📁 File Structure
+
+```
+.
+├── deploy-to-hetzner.sh          # Main deployment script ⭐
+├── health-check.sh                # Health verification
+├── apply-fix.sh                   # Model fix script
+│
+├── DEPLOYMENT_QUICKSTART.md       # Quick guide ⭐
+├── HETZNER_DEPLOYMENT.md          # Full guide
+├── FIX_QWEN_SCORING_ISSUE.md     # Model fixes
+├── README_DEPLOYMENT.md           # This file
+│
+├── docker-compose.yml             # Service config
+├── deploy-config.env.example      # Config template
+├── .deployignore                  # Exclude list
+│
+├── agent/                         # AI agent code
+├── backend/                       # Backend code
+├── dashboard/                     # Web UI code
+│
+└── README.md                      # Main application docs
+```
+
+---
+
+## 🎓 Learn More
+
+### Deployment
+- [Quick Start](DEPLOYMENT_QUICKSTART.md) - 5-minute guide
+- [Full Guide](HETZNER_DEPLOYMENT.md) - Complete documentation
+
+### Application
+- [README](README.md) - Main documentation
+- [Project Summary](PROJECT_SUMMARY.md) - Technical overview (if exists)
+
+### Issues
+- [Model Fix](FIX_QWEN_SCORING_ISSUE.md) - Scoring problems
+- [Troubleshooting](HETZNER_DEPLOYMENT.md#troubleshooting) - Common issues
+
+---
+
+## 🆘 Support
+
+**Quick Help:**
+```bash
+# Health check
+./health-check.sh YOUR_IP
+
+# View logs
+ssh root@YOUR_IP 'cd /opt/cyber-defense && docker-compose logs'
+
+# Check status
+ssh root@YOUR_IP 'cd /opt/cyber-defense && docker-compose ps'
+```
+
+**Need more help?**
+- Check `HETZNER_DEPLOYMENT.md`
+- Review application logs
+- Check Hetzner status page
+
+---
+
+## ✨ Summary
+
+This is a **complete deployment package** with:
+- ✅ One-command deployment
+- ✅ Automated setup
+- ✅ Health monitoring
+- ✅ Comprehensive documentation
+- ✅ Production ready
+
+**Get started:**
 ```bash
 ./deploy-to-hetzner.sh YOUR_SERVER_IP
 ```
 
-See [QUICKSTART_DEPLOYMENT.md](QUICKSTART_DEPLOYMENT.md) for a 5-minute walkthrough!
+**Access:**
+- Dashboard: `http://YOUR_IP:3000`
+- API: `http://YOUR_IP:8000/docs`
+
+**That's it!** 🎉
 
 ---
 
-**Built for easy deployment** | 492-Energy-Defense Cybersecurity Agent
+*Built for easy deployment to Hetzner Cloud*
