@@ -1,80 +1,51 @@
 #!/bin/bash
-# Create a clean deployment package for Hetzner
+# Create deployment package for Hetzner
 
 echo "╔════════════════════════════════════════════════════════╗"
-echo "║  Creating Deployment Package                          ║"
+echo "║  Creating Hetzner Deployment Package                  ║"
 echo "╚════════════════════════════════════════════════════════╝"
 echo ""
 
-# Package name
-PACKAGE_NAME="cyber-defense-$(date +%Y%m%d-%H%M%S).tar.gz"
+PACKAGE_NAME="cyber-defense-deploy.tar.gz"
 
-echo "📦 Creating package: $PACKAGE_NAME"
-echo ""
+echo "Packaging files..."
 
-# Create temporary directory for clean package
-TEMP_DIR=$(mktemp -d)
-DEPLOY_DIR="$TEMP_DIR/492-energy-defense"
+# Create a clean directory structure
+mkdir -p deploy-temp/cyber-defense
 
-echo "📋 Copying files..."
+# Copy essential files
+cp -r agent deploy-temp/cyber-defense/
+cp -r backend deploy-temp/cyber-defense/
+cp -r dashboard deploy-temp/cyber-defense/
+cp docker-compose.yml deploy-temp/cyber-defense/
+cp .env.example deploy-temp/cyber-defense/.env
+cp README.md deploy-temp/cyber-defense/
+cp check-qwen-model.sh deploy-temp/cyber-defense/
+cp test-llm-mode.sh deploy-temp/cyber-defense/
+cp apply-fix.sh deploy-temp/cyber-defense/
 
-# Create deployment directory structure
-mkdir -p "$DEPLOY_DIR"
+# Copy deployment scripts
+cp HETZNER_DEPLOYMENT_GUIDE.md deploy-temp/cyber-defense/ 2>/dev/null || true
 
-# Copy necessary files
-cp -r agent "$DEPLOY_DIR/"
-cp -r backend "$DEPLOY_DIR/"
-cp -r dashboard "$DEPLOY_DIR/"
-cp docker-compose.yml "$DEPLOY_DIR/"
-cp .env.example "$DEPLOY_DIR/.env"
-cp .gitignore "$DEPLOY_DIR/" 2>/dev/null || true
-
-# Copy utility scripts
-cp start.sh "$DEPLOY_DIR/" 2>/dev/null || true
-cp test-llm-mode.sh "$DEPLOY_DIR/" 2>/dev/null || true
-cp check-qwen-model.sh "$DEPLOY_DIR/" 2>/dev/null || true
-cp apply-fix.sh "$DEPLOY_DIR/" 2>/dev/null || true
-
-# Copy essential documentation
-cp README.md "$DEPLOY_DIR/" 2>/dev/null || true
-cp FIX_QWEN_SCORING_ISSUE.md "$DEPLOY_DIR/" 2>/dev/null || true
-
-# Make scripts executable
-chmod +x "$DEPLOY_DIR"/*.sh 2>/dev/null || true
-
-echo "✓ Files copied"
-echo ""
-
-# Create the tar.gz archive
-echo "📦 Creating tar.gz archive..."
-cd "$TEMP_DIR"
-tar -czf "$PACKAGE_NAME" 492-energy-defense/
-
-# Move to workspace
-mv "$PACKAGE_NAME" /workspace/
+# Create the tar.gz
+cd deploy-temp
+tar -czf ../$PACKAGE_NAME cyber-defense/
+cd ..
 
 # Cleanup
-cd /workspace
-rm -rf "$TEMP_DIR"
-
-echo "✓ Archive created"
-echo ""
+rm -rf deploy-temp
 
 # Get file size
-SIZE=$(du -h "/workspace/$PACKAGE_NAME" | cut -f1)
+SIZE=$(du -h $PACKAGE_NAME | cut -f1)
 
-echo "════════════════════════════════════════════════════════"
-echo "✅ Package created successfully!"
-echo "════════════════════════════════════════════════════════"
 echo ""
-echo "📦 Package: $PACKAGE_NAME"
-echo "📊 Size: $SIZE"
-echo "📍 Location: /workspace/$PACKAGE_NAME"
+echo "✅ Package created: $PACKAGE_NAME"
+echo "   Size: $SIZE"
 echo ""
 echo "Next steps:"
-echo "1. Upload to Hetzner: scp $PACKAGE_NAME root@YOUR_IP:~/"
+echo "1. Upload to Hetzner: scp $PACKAGE_NAME root@YOUR_IP:/root/"
 echo "2. SSH to server: ssh root@YOUR_IP"
-echo "3. Extract: tar -xzf $PACKAGE_NAME"
-echo "4. Deploy: cd 492-energy-defense && ./start.sh"
+echo "3. Extract and run setup"
 echo ""
+echo "See HETZNER_SIMPLE_DEPLOY.md for full instructions"
 
