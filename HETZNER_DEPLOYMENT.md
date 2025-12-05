@@ -1,539 +1,518 @@
-# Hetzner Server Deployment Guide
+# 492-Energy-Defense - Hetzner Deployment Guide
 
-Complete guide for deploying 492-Energy-Defense to a Hetzner Cloud server.
+## One-Command Deployment 🚀
 
-## Quick Start (5 Minutes)
+Deploy to your Hetzner server in under 5 minutes!
 
 ### Step 1: Create Hetzner Server
 
-1. Go to https://console.hetzner.cloud/
-2. Create new server:
+1. Go to [Hetzner Cloud Console](https://console.hetzner.cloud/)
+2. Create a new server:
    - **Image**: Ubuntu 22.04 LTS
-   - **Type**: CPX21 or higher (3 vCPU, 4GB RAM minimum)
-   - **Location**: Choose nearest to you
-   - **SSH Key**: Add your public SSH key
+   - **Type**: 
+     - CPX21 (3 vCPU, 8GB RAM) - Minimum for rule-based mode
+     - CPX31 (4 vCPU, 16GB RAM) - Recommended for LLM mode
+   - **Location**: Choose nearest
+   - **SSH Key**: Add your public key
    - **Name**: cyber-defense
-3. Note the server IP address (e.g., `65.21.123.45`)
+3. Note your server IP: `xxx.xxx.xxx.xxx`
 
-### Step 2: Setup Server
+### Step 2: Deploy Application
 
-From your local machine, run:
+**Option A: Deploy from local directory**
 
-```bash
-# Make scripts executable
-chmod +x hetzner-setup.sh deploy-to-hetzner.sh
-
-# Setup the server (one-time, as root)
-ssh root@YOUR_SERVER_IP 'bash -s' < hetzner-setup.sh
-```
-
-This script will:
-- ✅ Update system packages
-- ✅ Install Docker and Docker Compose
-- ✅ Configure firewall (UFW)
-- ✅ Create application user (`cyber`)
-- ✅ Optimize system for containers
-- ✅ Setup log rotation
-
-### Step 3: Deploy Application
+From your local machine where you have this repository:
 
 ```bash
-# Deploy from your local machine
-./deploy-to-hetzner.sh YOUR_SERVER_IP cyber
+# SSH to server
+ssh root@xxx.xxx.xxx.xxx
+
+# Download deployment script
+curl -fsSL https://raw.githubusercontent.com/your-repo/main/deploy-to-hetzner.sh -o deploy.sh
+
+# Or if files are already on server:
+# Copy all files to /tmp/cyber-agent first, then:
+cd /tmp/cyber-agent
+chmod +x deploy-to-hetzner.sh
+./deploy-to-hetzner.sh
 ```
 
-This will:
-- ✅ Package the application
-- ✅ Upload to server
-- ✅ Deploy with Docker Compose
-- ✅ Verify all services are running
+**Option B: One-line remote deployment**
 
-### Step 4: Access Services
+```bash
+# From your local machine, upload and run:
+scp -r ./* root@xxx.xxx.xxx.xxx:/tmp/cyber-agent/
+ssh root@xxx.xxx.xxx.xxx "cd /tmp/cyber-agent && bash deploy-to-hetzner.sh"
+```
 
-Open in your browser:
-- **Dashboard**: http://YOUR_SERVER_IP:3000
-- **API Docs**: http://YOUR_SERVER_IP:8000/docs
+**Option C: Direct download and run**
 
-Done! 🎉
+```bash
+# On the server:
+curl -fsSL https://raw.githubusercontent.com/your-repo/main/deploy-to-hetzner.sh | sudo bash
+```
+
+### Step 3: Configure During Installation
+
+The script will ask you:
+
+```
+Enter deployment user (default: cyber): [press Enter]
+Enable LLM mode? (y/N): n  [recommended: use rule-based]
+Continue with this configuration? (Y/n): y
+```
+
+**Recommended Configuration:**
+- User: `cyber` (default)
+- LLM Mode: `N` (rule-based is most reliable)
+- If you choose LLM, select option 1 (Rule-based) for best accuracy
+
+### Step 4: Access Your Application
+
+After 2-3 minutes, access at:
+
+- **Dashboard**: http://your-server-ip:3000
+- **API**: http://your-server-ip:8000
+- **API Docs**: http://your-server-ip:8000/docs
 
 ---
 
-## Detailed Deployment Steps
+## What Gets Installed
 
-### Prerequisites
+### Software
+- ✅ Docker & Docker Compose
+- ✅ UFW Firewall (configured)
+- ✅ Fail2ban (SSH protection)
+- ✅ Git, curl, jq
 
-**On your local machine:**
-- SSH access to server
-- SSH key added to Hetzner
-- `bash`, `ssh`, `scp`, `tar` installed
+### Application Components
+- ✅ PostgreSQL Database
+- ✅ Backend Event Generator
+- ✅ AI Agent API
+- ✅ Web Dashboard
+- ✅ Ollama (if LLM mode enabled)
 
-**Hetzner server requirements:**
-- **Minimum**: CPX21 (3 vCPU, 4GB RAM, 80GB SSD) ~€10/month
-- **Recommended**: CPX31 (4 vCPU, 8GB RAM, 160GB SSD) ~€20/month
-- **OS**: Ubuntu 22.04 LTS (recommended) or Ubuntu 24.04
+### Security
+- ✅ Firewall rules (SSH, Dashboard, API)
+- ✅ Fail2ban for SSH protection
+- ✅ Non-root user for application
+- ✅ Docker security
 
-### Server Setup (One-Time)
-
-The `hetzner-setup.sh` script configures your server:
-
-```bash
-ssh root@YOUR_SERVER_IP 'bash -s' < hetzner-setup.sh
-```
-
-**What it does:**
-
-1. **System Updates**
-   - Updates all packages
-   - Installs essential tools (curl, git, jq, vim, etc.)
-
-2. **Docker Installation**
-   - Removes old Docker versions
-   - Installs latest Docker and Docker Compose
-   - Enables Docker service
-
-3. **Firewall Configuration**
-   - Enables UFW firewall
-   - Allows SSH (port 22)
-   - Allows AI Agent (port 8000)
-   - Allows Dashboard (port 3000)
-   - Optionally allows PostgreSQL (port 5432)
-
-4. **User Setup**
-   - Creates `cyber` user for application
-   - Adds user to docker group
-   - Sets up application directory: `/opt/cyber-defense`
-
-5. **System Optimization**
-   - Increases file limits
-   - Optimizes kernel parameters
-   - Configures log rotation
-
-**Time**: ~3-5 minutes
-
-### Application Deployment
-
-The `deploy-to-hetzner.sh` script handles deployment:
-
-```bash
-./deploy-to-hetzner.sh YOUR_SERVER_IP [SSH_USER]
-```
-
-**Parameters:**
-- `YOUR_SERVER_IP`: Server IP address (required)
-- `SSH_USER`: SSH user (default: `cyber`, can use `root`)
-
-**What it does:**
-
-1. **Tests Connection**
-   - Verifies SSH access to server
-
-2. **Creates Package**
-   - Bundles application files
-   - Includes docker-compose configuration
-   - Adds production overrides
-   - Creates deployment scripts
-
-3. **Uploads Package**
-   - Transfers package to server via SCP
-   - Extracts to `/opt/cyber-defense`
-
-4. **Deploys Application**
-   - Stops existing containers
-   - Pulls Docker images
-   - Builds custom images
-   - Starts all services
-
-5. **Verifies Deployment**
-   - Checks AI Agent health
-   - Checks Dashboard health
-   - Checks Database connectivity
-
-**Time**: ~5-10 minutes (first deployment)
+### Helper Commands
+- ✅ `cyber-agent` command for management
 
 ---
 
-## Production Configuration
+## Management Commands
 
-The deployment uses production-optimized settings:
-
-### docker-compose.prod.yml
-
-```yaml
-version: '3.8'
-
-services:
-  agent:
-    restart: always
-    environment:
-      - USE_LLM=false  # Rule-based mode for reliability
-    
-  backend:
-    restart: always
-    
-  dashboard:
-    restart: always
-    
-  db:
-    restart: always
-    
-  ollama:
-    restart: always
-```
-
-**Key settings:**
-- ✅ `restart: always` - Auto-restart on failure or reboot
-- ✅ `USE_LLM=false` - Rule-based mode (100% accurate, no LLM overhead)
-
-### To Enable LLM Mode
-
-Edit on server:
+The deployment installs a helper command:
 
 ```bash
-ssh cyber@YOUR_SERVER_IP
-cd /opt/cyber-defense
-nano docker-compose.prod.yml
-
-# Change:
-- USE_LLM=true
-
-# Restart:
-docker compose restart agent
+cyber-agent status    # Check service status
+cyber-agent logs      # View live logs
+cyber-agent restart   # Restart all services
+cyber-agent stop      # Stop all services
+cyber-agent start     # Start all services
+cyber-agent update    # Update and restart
 ```
 
----
-
-## Server Management
-
-### Connect to Server
+Or use Docker Compose directly:
 
 ```bash
-ssh cyber@YOUR_SERVER_IP
-cd /opt/cyber-defense
-```
+cd /home/cyber/cyber-agent
 
-### View Logs
+# View status
+docker compose ps
 
-```bash
-# All services
+# View logs
 docker compose logs -f
 
-# Specific service
-docker compose logs -f agent
-docker compose logs -f backend
-docker compose logs -f dashboard
-```
-
-### Check Status
-
-```bash
-docker compose ps
-```
-
-### Restart Services
-
-```bash
-# All services
+# Restart services
 docker compose restart
 
-# Specific service
-docker compose restart agent
-```
-
-### Stop Services
-
-```bash
+# Stop everything
 docker compose down
-```
 
-### Start Services
-
-```bash
+# Start everything
 docker compose up -d
 ```
 
-### Update Deployment
+---
 
-From your local machine:
+## Server Requirements
 
-```bash
-./deploy-to-hetzner.sh YOUR_SERVER_IP cyber
-```
+### Minimum (Rule-Based Mode)
+- **CPU**: 2 vCPUs
+- **RAM**: 4GB
+- **Disk**: 20GB
+- **Cost**: ~€10/month (CPX21)
 
-This will:
-- Backup current deployment
-- Deploy new version
-- Restart services
+### Recommended (Rule-Based Mode)
+- **CPU**: 3 vCPUs
+- **RAM**: 8GB
+- **Disk**: 40GB
+- **Cost**: ~€15/month (CPX21)
+
+### Recommended (LLM Mode)
+- **CPU**: 4 vCPUs
+- **RAM**: 16GB
+- **Disk**: 40GB
+- **Cost**: ~€30/month (CPX31)
 
 ---
 
-## Monitoring
+## Firewall Configuration
 
-### Health Checks
-
-```bash
-# AI Agent
-curl http://localhost:8000/health | jq
-
-# Dashboard
-curl http://localhost:3000/health | jq
-
-# Database
-docker exec cyber-events-db pg_isready -U postgres
-```
-
-### Resource Usage
+The script automatically configures UFW:
 
 ```bash
-# Container stats
-docker stats
+# View firewall status
+sudo ufw status
 
-# System resources
-htop
+# Allow additional port
+sudo ufw allow 443/tcp
 
-# Disk usage
-df -h
+# Remove rule
+sudo ufw delete allow 443/tcp
 ```
 
-### Database Access
-
-```bash
-# Connect to database
-docker exec -it cyber-events-db psql -U postgres -d cyber_events
-
-# Example queries
-SELECT COUNT(*) FROM event_analyses;
-SELECT severity, COUNT(*) FROM event_analyses GROUP BY severity;
-SELECT * FROM event_analyses WHERE severity='critical' ORDER BY analyzed_at DESC LIMIT 10;
-```
+**Default Open Ports:**
+- 22 (SSH)
+- 3000 (Dashboard)
+- 8000 (Agent API)
 
 ---
 
 ## Troubleshooting
 
+### Check Service Status
+
+```bash
+cyber-agent status
+```
+
+### View Logs
+
+```bash
+# All logs
+cyber-agent logs
+
+# Specific service
+docker logs cyber-agent
+docker logs cyber-backend
+docker logs cyber-dashboard
+```
+
 ### Services Not Starting
 
 ```bash
-# Check logs
-docker compose logs
+# Restart everything
+cyber-agent restart
 
-# Check if ports are available
-sudo netstat -tlnp | grep -E '3000|8000|5432'
-
-# Restart Docker
-sudo systemctl restart docker
+# Or full restart
+cd /home/cyber/cyber-agent
+docker compose down
 docker compose up -d
 ```
 
-### Firewall Issues
+### Cannot Access Dashboard
 
 ```bash
-# Check firewall status
-sudo ufw status
+# Check if port is open
+sudo ufw status | grep 3000
 
-# Re-configure if needed
-sudo ufw allow 8000/tcp
-sudo ufw allow 3000/tcp
-sudo ufw reload
+# Check if service is running
+curl http://localhost:3000/health
+
+# Check Docker logs
+docker logs cyber-dashboard
 ```
 
 ### Out of Memory
 
 ```bash
-# Check memory
+# Check memory usage
 free -h
 
-# Add swap if needed
-sudo fallocate -l 4G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+# Check Docker stats
+docker stats
+
+# Solution: Upgrade server or disable LLM mode
+cd /home/cyber/cyber-agent
+# Edit docker-compose.yml, set USE_LLM=false
+docker compose restart agent
 ```
 
-### Database Issues
+### Database Connection Errors
 
 ```bash
-# Reset database
-docker compose down
-docker volume rm workspace_postgres_data
+# Restart database
+docker restart cyber-events-db
+
+# Check database logs
+docker logs cyber-events-db
+
+# Verify database is healthy
+docker exec cyber-events-db pg_isready -U postgres
+```
+
+---
+
+## Updating the Application
+
+### Method 1: Using Helper Command
+
+```bash
+cyber-agent update
+```
+
+### Method 2: Manual Update
+
+```bash
+cd /home/cyber/cyber-agent
+git pull
+docker compose pull
 docker compose up -d
 ```
 
-### Complete Reset
+### Method 3: Full Rebuild
 
 ```bash
-# Stop and remove everything
-docker compose down -v
-docker system prune -a --volumes -f
-
-# Redeploy
-cd /opt/cyber-defense
-bash deploy.sh
+cd /home/cyber/cyber-agent
+docker compose down
+docker compose build
+docker compose up -d
 ```
 
 ---
 
-## Security Considerations
-
-### Firewall Rules
-
-The setup script configures UFW with minimal open ports:
-- Port 22: SSH (required)
-- Port 8000: AI Agent API
-- Port 3000: Dashboard
-- Port 5432: PostgreSQL (optional, blocked by default)
-
-### SSH Hardening (Optional)
-
-```bash
-# Disable password authentication
-sudo nano /etc/ssh/sshd_config
-# Set: PasswordAuthentication no
-
-# Restart SSH
-sudo systemctl restart sshd
-```
-
-### HTTPS Setup (Optional)
-
-For production, use a reverse proxy with SSL:
-
-```bash
-# Install Nginx
-sudo apt install nginx certbot python3-certbot-nginx
-
-# Configure reverse proxy
-sudo nano /etc/nginx/sites-available/cyber-defense
-
-# Get SSL certificate
-sudo certbot --nginx -d your-domain.com
-```
-
-### Database Security
-
-By default, PostgreSQL is only accessible from Docker network. To restrict external access:
-
-```bash
-# Remove PostgreSQL port from firewall
-sudo ufw delete allow 5432/tcp
-```
-
----
-
-## Backup and Recovery
+## Backup & Restore
 
 ### Backup Database
 
 ```bash
 # Create backup
-docker exec cyber-events-db pg_dump -U postgres cyber_events > backup_$(date +%Y%m%d).sql
+docker exec cyber-events-db pg_dump -U postgres cyber_events > backup.sql
 
 # Download to local machine
-scp cyber@YOUR_SERVER_IP:/opt/cyber-defense/backup_*.sql ./
+scp root@your-server-ip:/root/backup.sql ./
 ```
 
 ### Restore Database
 
 ```bash
-# Upload backup to server
-scp backup_20251202.sql cyber@YOUR_SERVER_IP:/opt/cyber-defense/
+# Upload backup
+scp backup.sql root@your-server-ip:/tmp/
 
 # Restore
-cat backup_20251202.sql | docker exec -i cyber-events-db psql -U postgres cyber_events
+docker exec -i cyber-events-db psql -U postgres cyber_events < /tmp/backup.sql
 ```
 
-### Backup Volumes
+### Backup Configuration
 
 ```bash
-# Backup all Docker volumes
-docker run --rm -v workspace_postgres_data:/data -v $(pwd):/backup \
-  ubuntu tar czf /backup/postgres_backup.tar.gz /data
-
-docker run --rm -v workspace_ollama_data:/data -v $(pwd):/backup \
-  ubuntu tar czf /backup/ollama_backup.tar.gz /data
+# Backup docker-compose.yml
+cp /home/cyber/cyber-agent/docker-compose.yml ~/docker-compose.backup.yml
 ```
 
 ---
 
-## Scaling Considerations
+## Uninstall
 
-### Vertical Scaling (Upgrade Server)
+```bash
+# Stop and remove containers
+cd /home/cyber/cyber-agent
+docker compose down -v
 
-1. Create snapshot of current server in Hetzner console
-2. Resize server to larger type (CPX41, CPX51, etc.)
-3. Restart services
+# Remove application directory
+sudo rm -rf /home/cyber/cyber-agent
 
-### Horizontal Scaling
+# Remove user (optional)
+sudo userdel -r cyber
 
-For multiple servers, consider:
-- Separate database server
-- Load balancer for API/Dashboard
-- Shared storage for Docker volumes
+# Remove helper command
+sudo rm /usr/local/bin/cyber-agent
+
+# Remove firewall rules (optional)
+sudo ufw delete allow 3000/tcp
+sudo ufw delete allow 8000/tcp
+```
+
+---
+
+## Security Best Practices
+
+### 1. Change Default Passwords
+
+```bash
+# Edit docker-compose.yml
+cd /home/cyber/cyber-agent
+nano docker-compose.yml
+
+# Change POSTGRES_PASSWORD
+# Restart services
+docker compose down && docker compose up -d
+```
+
+### 2. Enable HTTPS (Optional)
+
+```bash
+# Install Caddy (reverse proxy with auto HTTPS)
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install caddy
+
+# Configure Caddy
+sudo nano /etc/caddy/Caddyfile
+```
+
+Add:
+```
+your-domain.com {
+    reverse_proxy localhost:3000
+}
+
+api.your-domain.com {
+    reverse_proxy localhost:8000
+}
+```
+
+```bash
+# Restart Caddy
+sudo systemctl restart caddy
+
+# Open HTTPS port
+sudo ufw allow 443/tcp
+```
+
+### 3. Regular Updates
+
+```bash
+# Update system packages weekly
+sudo apt update && sudo apt upgrade -y
+
+# Update application monthly
+cyber-agent update
+```
+
+### 4. Monitor Logs
+
+```bash
+# Check for suspicious activity
+sudo tail -f /var/log/auth.log
+
+# Check fail2ban status
+sudo fail2ban-client status sshd
+```
 
 ---
 
 ## Cost Estimation
 
-| Server Type | vCPU | RAM | Storage | Monthly Cost |
-|-------------|------|-----|---------|--------------|
-| CPX11 | 2 | 2GB | 40GB | ~€5 | ⚠️ Too small |
-| CPX21 | 3 | 4GB | 80GB | ~€10 | ✅ Minimum |
-| CPX31 | 4 | 8GB | 160GB | ~€20 | ✅ Recommended |
-| CPX41 | 8 | 16GB | 240GB | ~€40 | High performance |
+### Monthly Costs (Hetzner)
 
-**Recommended**: CPX31 for production use
+| Configuration | Server | Cost/Month |
+|--------------|--------|------------|
+| Rule-Based (Minimum) | CPX11 (2 vCPU, 4GB) | €7 |
+| Rule-Based (Recommended) | CPX21 (3 vCPU, 8GB) | €15 |
+| LLM Mode (Qwen 1.5B) | CPX31 (4 vCPU, 16GB) | €30 |
+| LLM Mode (Qwen 3B) | CPX41 (8 vCPU, 32GB) | €60 |
 
----
-
-## Support Files
-
-The deployment package includes:
-
-- `hetzner-setup.sh` - Server setup script
-- `deploy-to-hetzner.sh` - Deployment script from local machine
-- `deploy.sh` - Deployment script that runs on server
-- `docker-compose.prod.yml` - Production configuration
-- `apply-fix.sh` - Fix Qwen scoring issues
-- `check-qwen-model.sh` - Verify model loading
+**Recommendation**: Start with CPX21 + Rule-Based mode (€15/month)
 
 ---
 
-## Quick Command Reference
+## Performance Tuning
 
-```bash
-# Initial setup (run once)
-ssh root@YOUR_SERVER_IP 'bash -s' < hetzner-setup.sh
+### For Small Servers (4-8GB RAM)
 
-# Deploy application
-./deploy-to-hetzner.sh YOUR_SERVER_IP cyber
+Edit `docker-compose.yml`:
 
-# Connect to server
-ssh cyber@YOUR_SERVER_IP
-cd /opt/cyber-defense
+```yaml
+services:
+  db:
+    environment:
+      - POSTGRES_SHARED_BUFFERS=256MB
+      - POSTGRES_EFFECTIVE_CACHE_SIZE=1GB
+```
 
-# View logs
-docker compose logs -f
+### Reduce Event Generation
 
-# Check status
-docker compose ps
+Edit `backend/data_generator.py`:
 
-# Restart
-docker compose restart
-
-# Update
-./deploy-to-hetzner.sh YOUR_SERVER_IP cyber
+```python
+# Reduce number of events
+num_login = random.randint(5, 15)  # Instead of 20-80
+num_firewall = random.randint(20, 50)  # Instead of 100-300
 ```
 
 ---
 
-## Next Steps
+## Getting Help
 
-1. ✅ Deploy to Hetzner
-2. ✅ Verify all services running
-3. ✅ Open dashboard in browser
-4. ✅ Wait for first event generation (30 min)
-5. ✅ Review security settings
-6. ✅ Setup backups
-7. ✅ Monitor resource usage
+### Check Service Status
 
-**Questions or issues?** Check the troubleshooting section or logs!
+```bash
+cyber-agent status
+```
+
+### View All Logs
+
+```bash
+cyber-agent logs
+```
+
+### System Information
+
+```bash
+# Memory usage
+free -h
+
+# Disk usage
+df -h
+
+# Docker stats
+docker stats
+
+# Running containers
+docker ps
+```
+
+### Support
+
+- Check logs first: `cyber-agent logs`
+- Review README.md in `/home/cyber/cyber-agent`
+- Check GitHub issues
+- Review this deployment guide
+
+---
+
+## Quick Reference
+
+```bash
+# Deployment
+./deploy-to-hetzner.sh
+
+# Management
+cyber-agent {start|stop|restart|logs|status|update}
+
+# Access
+Dashboard:  http://server-ip:3000
+API:        http://server-ip:8000
+API Docs:   http://server-ip:8000/docs
+
+# Files
+Config:     /home/cyber/cyber-agent/docker-compose.yml
+Logs:       docker compose logs
+Data:       Docker volumes (postgres_data, ollama_data)
+
+# Security
+Firewall:   sudo ufw status
+Fail2ban:   sudo fail2ban-client status
+```
+
+---
+
+**Ready to deploy? Run `./deploy-to-hetzner.sh` on your Hetzner server!** 🚀
