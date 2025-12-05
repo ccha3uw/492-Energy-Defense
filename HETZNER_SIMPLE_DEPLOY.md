@@ -1,184 +1,372 @@
 # Simple Hetzner Deployment with tar.gz
 
-## Quick Deployment (5 Minutes)
+## Overview
 
-This guide is for deploying with **root user + password** authentication.
+This is the easiest way to deploy to Hetzner using root user with password authentication.
 
----
+## Prerequisites
 
-## Step 1: Create Deployment Package (Local Machine)
+- Hetzner server created (Ubuntu 20.04/22.04/24.04)
+- Root password
+- Server IP address
+- Minimum: 8GB RAM, 20GB disk
 
-On your local machine where the project is:
+## Step-by-Step Deployment
+
+### Step 1: Create Deployment Package
+
+On your **local machine**, in the project directory:
 
 ```bash
 ./create-deployment-package.sh
 ```
 
-This creates: `cyber-agent-deployment.tar.gz` (~50MB)
+This creates: `cyber-defense-deployment.tar.gz` (~10-20MB)
 
 ---
 
-## Step 2: Upload to Hetzner Server
+### Step 2: Upload to Hetzner
 
-### Using SCP (with password)
+Choose your preferred method:
+
+#### Option A: Using SCP (Command Line)
 
 ```bash
-scp cyber-agent-deployment.tar.gz root@YOUR_SERVER_IP:~/
-```
-
-You'll be prompted for the root password.
-
-**Example:**
-```bash
-scp cyber-agent-deployment.tar.gz root@65.21.123.45:~/
+scp cyber-defense-deployment.tar.gz root@YOUR_SERVER_IP:/root/
 # Enter password when prompted
 ```
 
-### Alternative: Using WinSCP (Windows)
+#### Option B: Using FileZilla (GUI)
 
-If on Windows:
-1. Download WinSCP: https://winscp.net/
-2. Connect to your server:
-   - Host: `YOUR_SERVER_IP`
-   - Username: `root`
-   - Password: `your_password`
-3. Drag and drop `cyber-agent-deployment.tar.gz` to `/root/`
+1. Open FileZilla
+2. Enter connection details:
+   - **Host**: YOUR_SERVER_IP
+   - **Username**: root
+   - **Password**: your_password
+   - **Port**: 22
+3. Connect
+4. Navigate to `/root/` on remote side
+5. Drag and drop `cyber-defense-deployment.tar.gz`
+
+#### Option C: Using WinSCP (Windows GUI)
+
+1. Open WinSCP
+2. New Session:
+   - **File protocol**: SCP
+   - **Host name**: YOUR_SERVER_IP
+   - **User name**: root
+   - **Password**: your_password
+3. Login
+4. Upload file to `/root/`
 
 ---
 
-## Step 3: SSH into Server
+### Step 3: SSH into Server
 
 ```bash
 ssh root@YOUR_SERVER_IP
-# Enter password when prompted
+# Enter password
 ```
+
+Or use PuTTY on Windows with:
+- Host: YOUR_SERVER_IP
+- Port: 22
+- Username: root
+- Password: your_password
 
 ---
 
-## Step 4: Extract and Deploy
+### Step 4: Extract and Setup
 
-On the server:
+On the **Hetzner server**:
 
 ```bash
+# Navigate to root directory
+cd /root
+
 # Extract the package
-tar -xzf cyber-agent-deployment.tar.gz
+tar -xzf cyber-defense-deployment.tar.gz
 
-# Go into the directory
-cd cyber-agent-deploy
+# Enter the directory
+cd cyber-defense
 
-# Run deployment script
-./deploy.sh
+# Run the automated setup
+./setup-hetzner.sh
 ```
 
-The deployment script will:
-- ✅ Install Docker (if not present)
-- ✅ Install Docker Compose
+The setup script will:
+- ✅ Update system packages
+- ✅ Install Docker & Docker Compose
+- ✅ Configure firewall (ports 22, 8000, 3000)
 - ✅ Start all services
-- ✅ Download Qwen model (~400MB, 1-2 min)
-- ✅ Initialize database
+- ✅ Download Qwen model (~400MB, 1-2 minutes)
+
+**Total time: 5-10 minutes**
 
 ---
 
-## Step 5: Verify Deployment
+### Step 5: Verify Installation
 
-### Check Services Running
+Wait 2-3 minutes after setup completes, then test:
 
 ```bash
+# Check services are running
 docker-compose ps
+
+# Should show 5 containers running:
+# - cyber-events-db
+# - ollama-qwen
+# - cyber-agent
+# - cyber-backend
+# - cyber-dashboard
 ```
 
-Should show 5 containers:
-- ✅ cyber-events-db
-- ✅ ollama-qwen
-- ✅ cyber-agent
-- ✅ cyber-backend
-- ✅ cyber-dashboard
-
-### Check Model Loaded
-
+Check the model loaded:
 ```bash
-./check-qwen-model.sh
+docker exec ollama-qwen ollama list
+# Should show: qwen2.5:0.5b
 ```
 
-### Test Agent
-
+Test the agent:
 ```bash
 curl http://localhost:8000/health | jq
 ```
 
 ---
 
-## Step 6: Open Firewall (IMPORTANT!)
+### Step 6: Access from Browser
 
-Allow external access to the ports:
-
+Get your server IP:
 ```bash
-# Install UFW if not present
-apt-get install -y ufw
+curl ifconfig.me
+```
 
-# Allow SSH (important!)
-ufw allow 22/tcp
+Then open in your browser:
+- **Dashboard**: `http://YOUR_SERVER_IP:3000`
+- **API Docs**: `http://YOUR_SERVER_IP:8000/docs`
 
-# Allow application ports
-ufw allow 3000/tcp  # Dashboard
-ufw allow 8000/tcp  # Agent API
+---
 
-# Enable firewall
-ufw --force enable
+## Useful Commands
 
-# Check status
-ufw status
+### Check Status
+```bash
+docker-compose ps
+```
+
+### View Logs
+```bash
+# All logs
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f agent
+docker-compose logs -f backend
+docker-compose logs -f dashboard
+```
+
+### Restart Services
+```bash
+# Restart all
+docker-compose restart
+
+# Restart specific service
+docker-compose restart agent
+```
+
+### Stop Services
+```bash
+docker-compose down
+```
+
+### Start Services
+```bash
+docker-compose up -d
+```
+
+### Check Resource Usage
+```bash
+docker stats
 ```
 
 ---
 
-## Step 7: Access From Your Computer
+## Configuration Changes
 
-Open in your browser:
+### Switch to Rule-Based Mode (Recommended)
 
-- **Dashboard**: `http://YOUR_SERVER_IP:3000`
-- **API Docs**: `http://YOUR_SERVER_IP:8000/docs`
-- **Health Check**: `http://YOUR_SERVER_IP:8000/health`
+Edit `/root/cyber-defense/docker-compose.yml`:
 
-Replace `YOUR_SERVER_IP` with your actual server IP (e.g., 65.21.123.45)
+```yaml
+agent:
+  environment:
+    - USE_LLM=false  # Disable LLM, use rule-based
+```
+
+Restart:
+```bash
+docker-compose restart agent
+```
+
+### Use Larger Qwen Model
+
+Edit `/root/cyber-defense/docker-compose.yml`:
+
+```yaml
+agent:
+  environment:
+    - OLLAMA_MODEL=qwen2.5:1.5b  # or qwen2.5:3b
+```
+
+Pull new model and restart:
+```bash
+docker exec ollama-qwen ollama pull qwen2.5:1.5b
+docker-compose restart agent
+```
 
 ---
 
-## Complete Example
+## Troubleshooting
+
+### Services Won't Start
 
 ```bash
-# === ON YOUR LOCAL MACHINE ===
+# Check Docker is running
+systemctl status docker
 
-# 1. Create package
-./create-deployment-package.sh
+# Check logs for errors
+docker-compose logs
 
-# 2. Upload to server (enter password when prompted)
-scp cyber-agent-deployment.tar.gz root@65.21.123.45:~/
+# Restart everything
+docker-compose down
+docker-compose up -d
+```
 
-# 3. SSH to server (enter password when prompted)
-ssh root@65.21.123.45
+### Can't Access from Browser
 
-# === NOW ON THE SERVER ===
+```bash
+# Check firewall
+ufw status
 
-# 4. Extract
-tar -xzf cyber-agent-deployment.tar.gz
-cd cyber-agent-deploy
-
-# 5. Deploy (installs everything)
-./deploy.sh
-
-# 6. Wait 1-2 minutes, then verify
-docker-compose ps
-./check-qwen-model.sh
-
-# 7. Open firewall
-ufw allow 22/tcp
-ufw allow 3000/tcp
+# Allow ports if needed
 ufw allow 8000/tcp
-ufw --force enable
+ufw allow 3000/tcp
+```
 
-# 8. Test from local machine browser
-# Open: http://65.21.123.45:3000
+### Out of Memory
+
+```bash
+# Check memory usage
+free -h
+
+# Check Docker stats
+docker stats
+
+# If using Qwen model and low on RAM, switch to rule-based:
+# Edit docker-compose.yml: USE_LLM=false
+docker-compose restart agent
+```
+
+### Model Not Loading
+
+```bash
+# Check Ollama logs
+docker logs ollama-init
+docker logs ollama-qwen
+
+# Manually pull model
+docker exec ollama-qwen ollama pull qwen2.5:0.5b
+
+# Verify it's there
+docker exec ollama-qwen ollama list
+```
+
+---
+
+## Security Notes
+
+### After Installation, Secure Your Server
+
+1. **Change Root Password**
+```bash
+passwd
+```
+
+2. **Create Non-Root User** (Optional but recommended)
+```bash
+adduser cyber
+usermod -aG sudo cyber
+usermod -aG docker cyber
+```
+
+3. **Configure SSH Key Authentication** (Optional)
+```bash
+# On local machine, generate key if you don't have one
+ssh-keygen
+
+# Copy to server
+ssh-copy-id root@YOUR_SERVER_IP
+```
+
+4. **Disable Password Authentication** (Only after SSH key works!)
+```bash
+nano /etc/ssh/sshd_config
+# Set: PasswordAuthentication no
+systemctl restart sshd
+```
+
+---
+
+## Updating the Application
+
+### Method 1: Pull Latest Images
+
+```bash
+cd /root/cyber-defense
+docker-compose down
+docker-compose pull
+docker-compose up -d
+```
+
+### Method 2: Upload New Package
+
+1. Create new package on local machine
+2. Upload to server
+3. Extract and replace:
+```bash
+cd /root
+tar -xzf cyber-defense-deployment.tar.gz
+cd cyber-defense
+docker-compose down
+docker-compose up -d
+```
+
+---
+
+## Complete Example Session
+
+Here's what the entire process looks like:
+
+```bash
+# === ON LOCAL MACHINE ===
+./create-deployment-package.sh
+scp cyber-defense-deployment.tar.gz root@65.21.123.45:/root/
+
+# === ON HETZNER SERVER ===
+ssh root@65.21.123.45
+cd /root
+tar -xzf cyber-defense-deployment.tar.gz
+cd cyber-defense
+./setup-hetzner.sh
+
+# Wait 5-10 minutes...
+
+# === VERIFY ===
+docker-compose ps
+curl http://localhost:8000/health | jq
+
+# === OPEN IN BROWSER ===
+# http://65.21.123.45:3000
 ```
 
 ---
@@ -188,206 +376,48 @@ ufw --force enable
 The deployment package includes:
 
 ```
-cyber-agent-deploy/
-├── agent/              # AI agent code
-├── backend/            # Backend service
-├── dashboard/          # Web dashboard
-├── docker-compose.yml  # Service orchestration
-├── .env                # Configuration
-├── deploy.sh           # Automated deployment script
-├── start.sh            # Start script
-├── check-qwen-model.sh # Verification script
-├── test-llm-mode.sh    # Testing script
-└── README.md           # Documentation
+cyber-defense/
+├── agent/                    # AI agent code
+├── backend/                  # Backend code
+├── dashboard/                # Dashboard code
+├── docker-compose.yml        # Docker configuration
+├── .env                      # Environment variables
+├── setup-hetzner.sh          # Automated setup script
+├── DEPLOY_README.md          # Deployment instructions
+└── *.sh                      # Helper scripts
 ```
 
 ---
 
-## Useful Commands on Server
+## Cost Estimate (Hetzner)
 
-### View Logs
-```bash
-docker-compose logs -f
-```
+Recommended server: **CPX31**
+- 4 vCPU, 16 GB RAM, 160 GB SSD
+- Cost: ~€30/month
+- Perfect for this application with LLM
 
-### Stop Services
-```bash
-docker-compose down
-```
-
-### Restart Services
-```bash
-docker-compose restart
-```
-
-### Update Application
-```bash
-# Upload new package
-# scp cyber-agent-deployment.tar.gz root@SERVER_IP:~/
-
-# On server:
-cd ~
-docker-compose down
-rm -rf cyber-agent-deploy
-tar -xzf cyber-agent-deployment.tar.gz
-cd cyber-agent-deploy
-docker-compose up -d
-```
-
-### Check Resource Usage
-```bash
-docker stats --no-stream
-```
-
-### View Agent Logs
-```bash
-docker logs cyber-agent --tail 50
-```
-
----
-
-## Troubleshooting
-
-### Can't connect to server?
-
-**Check SSH port is open:**
-```bash
-telnet YOUR_SERVER_IP 22
-```
-
-**Try with verbose SSH:**
-```bash
-ssh -v root@YOUR_SERVER_IP
-```
-
-### Services not starting?
-
-**Check Docker is running:**
-```bash
-systemctl status docker
-```
-
-**Check logs:**
-```bash
-cd cyber-agent-deploy
-docker-compose logs
-```
-
-**Restart everything:**
-```bash
-docker-compose down
-docker-compose up -d
-```
-
-### Can't access dashboard?
-
-**Check firewall:**
-```bash
-ufw status
-```
-
-**Make sure ports are open:**
-```bash
-ufw allow 3000/tcp
-ufw allow 8000/tcp
-```
-
-**Check service is running:**
-```bash
-docker-compose ps dashboard
-```
-
-### Model not loading?
-
-**Pull manually:**
-```bash
-docker exec ollama-qwen ollama pull qwen2.5:0.5b
-```
-
-**Check Ollama logs:**
-```bash
-docker logs ollama-qwen
-```
-
----
-
-## Server Requirements
-
-### Minimum
-- **CPU**: 2 cores
-- **RAM**: 4GB
-- **Storage**: 20GB
-- **OS**: Ubuntu 20.04 or 22.04
-
-### Recommended
-- **CPU**: 4 cores
-- **RAM**: 8GB
-- **Storage**: 40GB
-- **OS**: Ubuntu 22.04 LTS
-
----
-
-## Security Notes
-
-### For Production Use:
-
-1. **Change default passwords** in `.env` file
-2. **Use SSH keys** instead of password
-3. **Setup HTTPS** with Let's Encrypt
-4. **Restrict firewall** to specific IPs
-5. **Setup automatic backups**
-
-### Quick Security Improvements:
-
-```bash
-# Change PostgreSQL password
-nano .env
-# Edit: POSTGRES_PASSWORD=your_strong_password
-
-# Restart to apply
-docker-compose down
-docker-compose up -d
-
-# Restrict dashboard to specific IP
-ufw delete allow 3000/tcp
-ufw allow from YOUR_IP_ADDRESS to any port 3000 proto tcp
-```
-
----
-
-## Cost Estimate
-
-**Hetzner Cloud Pricing (as of 2025):**
-
-| Server | CPU | RAM | Storage | Price/Month |
-|--------|-----|-----|---------|-------------|
-| CPX11 | 2 vCPU | 2GB | 40GB | €4.51 |
-| CPX21 | 3 vCPU | 4GB | 80GB | €9.52 |
-| CPX31 | 4 vCPU | 8GB | 160GB | €18.54 |
-
-**Recommended: CPX21 (4GB RAM)** - €9.52/month
-
----
-
-## Next Steps
-
-1. ✅ Deploy to Hetzner
-2. ✅ Verify services are running
-3. ✅ Open dashboard in browser
-4. 📚 Read README.md for usage instructions
-5. 🔧 Run `./apply-fix.sh` if needed to fix scoring
-6. 🧪 Run `./test-llm-mode.sh` to test functionality
+Budget option: **CPX21** 
+- 3 vCPU, 8 GB RAM, 80 GB SSD
+- Cost: ~€15/month
+- Works, but use rule-based mode (USE_LLM=false)
 
 ---
 
 ## Support
 
 If you encounter issues:
-1. Check logs: `docker-compose logs`
-2. Verify Docker: `docker ps`
-3. Check firewall: `ufw status`
-4. Test locally: `curl http://localhost:8000/health`
+
+1. **Check logs**: `docker-compose logs -f`
+2. **Check status**: `docker-compose ps`
+3. **Check resources**: `htop` or `docker stats`
+4. **Restart**: `docker-compose restart`
+5. **Fresh start**: `docker-compose down && docker-compose up -d`
+
+For the Qwen scoring issue, run:
+```bash
+./apply-fix.sh
+```
 
 ---
 
-**That's it! You now have a working cybersecurity agent on Hetzner Cloud.** 🚀
+**That's it! You now have a fully functional cybersecurity agent running on Hetzner.** 🚀
