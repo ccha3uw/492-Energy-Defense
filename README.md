@@ -68,4 +68,4 @@ Python · FastAPI · PostgreSQL · Docker · Ollama (Mistral 7B) · Hetzner Clou
 
 ---
 
-**INFO 498B — Agentic Cybersecurity with AI & LLMs · University of Washington · 2024–2025**
+**INFO 498B — Agentic Cybersecurity with AI & LLMs · University of Washington · Fall Quarter 2025**
